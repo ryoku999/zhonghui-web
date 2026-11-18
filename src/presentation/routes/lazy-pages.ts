@@ -6,3 +6,5 @@ export const HomePage = lazy(
 
 export const LoginPage = lazy(() => import("@/presentation/features/auth/pages/LoginPage"));
 export const UsersPage = lazy(() => import("@/presentation/features/admin/UsersPage"));
+export const LocationsPage = lazy(() => import("@/presentation/features/catalog/LocationsPage"));
+export const CatalogsPage = lazy(() => import("@/presentation/features/catalog/CatalogsPage"));
