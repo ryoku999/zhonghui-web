@@ -11,13 +11,14 @@ import { getDraft, saveLocalLoad, type LocalLoad } from "@/presentation/features
 import { refreshLocalLocations, syncLocalLoads } from "@/presentation/features/offline/offline.sync";
 import { useStoredLocations } from "@/presentation/features/offline/useLocalData";
 import HistorySuggestions from "./HistorySuggestions";
+import LookupPanel from "@/presentation/features/catalog/LookupPanel";
 import LoadSummary from "./LoadSummary";
 import { loadSchema, type LoadInput } from "./loads.api";
 
 const defaultValues: LoadInput = {
   locationId: "", ruc: "", legalName: "", documentType: "DNI", documentNumber: "",
   firstNames: "", lastNames: "", licenseNumber: "", licenseId: "", phone: "", tractorPlate: "",
-  trailerPlate: "", unitDescription: "", notes: "",
+  trailerPlate: "", unitDescription: "", notes: "", externalFields: [],
 };
 
 export default function NewLoadPage() {
@@ -59,6 +60,12 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
 
   function setField(name: keyof LoadInput, value?: string | null) {
     setValue(name, value ?? "", { shouldValidate: true, shouldDirty: true });
+  }
+
+  function applyExternalField(name: NonNullable<LoadInput["externalFields"]>[number], value?: string) {
+    if (!value) return;
+    setField(name, value);
+    setValue("externalFields", [...new Set([...(getValues("externalFields") ?? []), name])]);
   }
 
   function field(name: keyof LoadInput, label: string, options?: { inputMode?: "numeric" | "tel"; maxLength?: number }) {
@@ -140,6 +147,8 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
               <HistorySuggestions catalog="companies" term={ruc} label="Buscar por RUC"
                 describe={(row) => `${row.ruc} · ${row.legalName}`}
                 select={(row) => { setField("ruc", row.ruc); setField("legalName", row.legalName); }} />
+              <LookupPanel key={ruc} kind="sunat" value={ruc}
+                onApply={(result) => { applyExternalField("ruc", result.ruc); applyExternalField("legalName", result.legalName); }} />
             </CardContent>
           </Card>
           <Card>
@@ -169,6 +178,15 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
                 label="Buscar licencias del conductor"
                 describe={(row) => [row.licenseNumber, row.issuingCountry, row.expiresOn].filter(Boolean).join(" · ")}
                 select={(row) => { setField("licenseNumber", row.licenseNumber); setField("licenseId", row.id); }} />}
+              {documentType.trim().toUpperCase() === "DNI" && <LookupPanel key={documentNumber} kind="mtc" value={documentNumber}
+                onApply={(result) => {
+                  applyExternalField("firstNames", result.firstNames);
+                  applyExternalField("lastNames", result.lastNames);
+                  if (result.licenseNumber) {
+                    applyExternalField("licenseNumber", result.licenseNumber);
+                    setField("licenseId", "");
+                  }
+                }} />}
             </CardContent>
           </Card>
           <Card>
@@ -179,12 +197,16 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
                   {field("tractorPlate", "Placa de tracto")}
                   <HistorySuggestions catalog="vehicles" filters={{ type: "TRACTOR" }} term={tractor}
                     label="Buscar tracto" describe={(row) => row.plate ?? ""} select={(row) => setField("tractorPlate", row.plate)} />
+                  <LookupPanel key={tractor} kind="sunarp" value={tractor}
+                    onApply={(result) => applyExternalField("tractorPlate", result.plate)} />
                 </div>
                 <div className="space-y-2">
                   {field("trailerPlate", "Placa de carreta")}
                   <HistorySuggestions catalog="vehicles" term={trailer}
                     label="Buscar carreta" describe={(row) => `${row.plate} · ${row.vehicleType}`}
                     filters={{ type: "TRAILER,SEMITRAILER" }} select={(row) => setField("trailerPlate", row.plate)} />
+                  <LookupPanel key={trailer} kind="sunarp" value={trailer}
+                    onApply={(result) => applyExternalField("trailerPlate", result.plate)} />
                 </div>
               </div>
               {field("unitDescription", "Unidad (opcional)")}

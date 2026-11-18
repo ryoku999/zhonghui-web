@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from "react";
+import { Fragment, useState, type FormEvent } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent } from "@/presentation/components/ui/card";
@@ -6,6 +6,8 @@ import { Input } from "@/presentation/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/presentation/components/ui/table";
 import { list, pageSize, requestMessage, type CatalogName, type CatalogRow } from "./catalog.api";
 import Pagination from "./Pagination";
+import LookupPanel from "./LookupPanel";
+import { formatDatePE } from "@/shared/lib/dates";
 
 const catalogs = {
   companies: { label: "Empresas", hint: "RUC o razón social", columns: [
@@ -52,6 +54,8 @@ function CatalogResults({ name, driver, clearDriver, showLicenses }: {
 }) {
   const [page, setPage] = useState(0);
   const [filters, setFilters] = useState({ q: "", type: "" });
+  const [expanded, setExpanded] = useState<string>();
+  const hasDetails = name === "licenses" || name === "vehicles";
   const config = catalogs[name];
   const results = useQuery({
     queryKey: ["catalog", name, page, filters, driver?.id],
@@ -66,6 +70,7 @@ function CatalogResults({ name, driver, clearDriver, showLicenses }: {
     const form = new FormData(event.currentTarget);
     setFilters({ q: String(form.get("q") ?? "").trim(), type: String(form.get("type") ?? "") });
     setPage(0);
+    setExpanded(undefined);
   }
 
   return (
@@ -96,13 +101,39 @@ function CatalogResults({ name, driver, clearDriver, showLicenses }: {
           <TableHeader><TableRow>
             {config.columns.map(([field, label]) => <TableHead key={field}>{label}</TableHead>)}
             {name === "drivers" && <TableHead>Licencias</TableHead>}
+            {hasDetails && <TableHead>Detalle</TableHead>}
           </TableRow></TableHeader>
-          <TableBody>{results.data.map((row) => <TableRow key={row.id}>
+          <TableBody>{results.data.map((row) => <Fragment key={row.id}><TableRow>
             {config.columns.map(([field]) => <TableCell key={field}>{row[field] || "—"}</TableCell>)}
             {name === "drivers" && <TableCell>
               <Button size="sm" variant="outline" onClick={() => showLicenses(row)}>Ver licencias</Button>
             </TableCell>}
-          </TableRow>)}</TableBody>
+            {hasDetails && <TableCell>
+              <Button size="sm" variant="outline" aria-expanded={expanded === row.id}
+                onClick={() => setExpanded(expanded === row.id ? undefined : row.id)}>
+                {expanded === row.id ? "Ocultar datos" : "Ver más datos"}
+              </Button>
+            </TableCell>}
+          </TableRow>
+            {hasDetails && expanded === row.id && <TableRow>
+              <TableCell colSpan={config.columns.length + 1} className="whitespace-normal">
+                <div className="space-y-3 p-2">
+                  <dl className="grid gap-3 sm:grid-cols-3">
+                    {(name === "licenses" ? [
+                      ["Estado oficial", row.licenseStatus], ["Fecha de expedición", row.issuedOn ? formatDatePE(row.issuedOn) : ""],
+                    ] : [
+                      ["Año de modelo", row.modelYear], ["Color", row.color], ["Estado registral", row.registrationStatus],
+                    ]).map(([label, value]) => <div key={label}>
+                      <dt className="text-muted-foreground">{label}</dt><dd>{value || "—"}</dd>
+                    </div>)}
+                  </dl>
+                  {name === "vehicles" && <LookupPanel kind="sunarp" value={row.plate ?? ""} />}
+                  {name === "licenses" && row.driverDocumentType === "DNI" &&
+                    <LookupPanel kind="mtc" value={row.driverDocument ?? ""} />}
+                </div>
+              </TableCell>
+            </TableRow>}
+          </Fragment>)}</TableBody>
         </Table>}
         <Pagination page={page} onChange={setPage} hasNext={results.data?.length === pageSize} loading={results.isFetching} />
       </CardContent>

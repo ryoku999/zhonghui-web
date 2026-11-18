@@ -19,6 +19,7 @@ export const loadSchema = z.object({
   trailerPlate: plate,
   unitDescription: z.string().trim().max(200),
   notes: z.string().trim().max(1000),
+  externalFields: z.array(z.enum(["ruc", "legalName", "firstNames", "lastNames", "licenseNumber", "tractorPlate", "trailerPlate"])).optional(),
 }).refine(({ documentType, documentNumber }) => documentType !== "DNI" || /^\d{8}$/.test(documentNumber), {
   path: ["documentNumber"], message: "El DNI debe tener 8 dígitos.",
 }).refine(({ tractorPlate, trailerPlate }) => tractorPlate !== trailerPlate, {
