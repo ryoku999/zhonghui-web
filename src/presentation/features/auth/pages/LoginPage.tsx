@@ -3,6 +3,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { Button } from "@/presentation/components/ui/button";
+import { Card, CardContent, CardHeader } from "@/presentation/components/ui/card";
+import { Input } from "@/presentation/components/ui/input";
 import { login } from "../auth.api";
 
 const schema = z.object({
@@ -32,20 +34,23 @@ export default function LoginPage() {
 
   return (
     <main className="grid min-h-svh place-items-center bg-muted/40 p-6">
-      <section className="w-full max-w-sm rounded-xl border bg-card p-7 text-card-foreground shadow-sm">
-        <h1 className="text-2xl font-semibold tracking-tight">zhonghui</h1>
-        <p className="mt-1 text-sm text-muted-foreground">Registro de transportistas</p>
-        <form className="mt-7 space-y-4" onSubmit={handleSubmit(submit)} noValidate>
+      <Card className="w-full max-w-sm shadow-sm">
+        <CardHeader>
+          <h1 className="text-2xl font-semibold tracking-tight">zhonghui</h1>
+          <p className="text-sm text-muted-foreground">Registro de transportistas</p>
+        </CardHeader>
+        <CardContent>
+        <form className="space-y-4" onSubmit={handleSubmit(submit)} noValidate>
           <div className="space-y-1.5">
             <label htmlFor="username" className="block text-sm font-medium">Usuario</label>
-            <input id="username" autoComplete="username" aria-invalid={!!errors.username}
-              className="h-10 w-full rounded-lg border bg-background px-3" {...register("username")} />
+            <Input id="username" autoComplete="username" aria-invalid={!!errors.username}
+              className="h-10" {...register("username")} />
             {errors.username && <p className="text-sm text-destructive">{errors.username.message}</p>}
           </div>
           <div className="space-y-1.5">
             <label htmlFor="password" className="block text-sm font-medium">Contraseña</label>
-            <input id="password" type="password" autoComplete="current-password" aria-invalid={!!errors.password}
-              className="h-10 w-full rounded-lg border bg-background px-3" {...register("password")} />
+            <Input id="password" type="password" autoComplete="current-password" aria-invalid={!!errors.password}
+              className="h-10" {...register("password")} />
             {errors.password && <p className="text-sm text-destructive">{errors.password.message}</p>}
           </div>
           {errors.root && <p role="alert" className="text-sm text-destructive">{errors.root.message}</p>}
@@ -53,7 +58,8 @@ export default function LoginPage() {
             {isSubmitting ? "Ingresando…" : "Iniciar sesión"}
           </Button>
         </form>
-      </section>
+        </CardContent>
+      </Card>
     </main>
   );
 }
