@@ -26,6 +26,8 @@ export default function SessionLayout() {
       <header className="border-b">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center gap-4 px-6 py-4">
           <Link to="/" className="mr-auto text-lg font-semibold">zhonghui</Link>
+          {(user?.role === "ADMIN" || user?.role === "OPERATOR") &&
+            <Link to="/registros/nuevo" className="text-sm underline">Nuevo registro</Link>}
           <Link to="/puntos-de-embarque" className="text-sm underline">Puntos de embarque</Link>
           <Link to="/catalogos" className="text-sm underline">Catálogos</Link>
           {user?.role === "ADMIN" && <Link to="/usuarios" className="text-sm underline">Usuarios</Link>}

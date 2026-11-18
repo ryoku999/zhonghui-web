@@ -4,7 +4,7 @@ import AuthGuard from "@/presentation/guards/AuthGuard";
 import GuestGuard from "@/presentation/guards/GuestGuard";
 import RoleGuard from "@/presentation/guards/RoleGuard";
 import SessionLayout from "@/presentation/layouts/SessionLayout";
-import { CatalogsPage, LocationsPage, LoginPage, UsersPage } from "./lazy-pages";
+import { CatalogsPage, LoadDetailPage, LocationsPage, LoginPage, NewLoadPage, UsersPage } from "./lazy-pages";
 
 export const routes = createBrowserRouter([
   {
@@ -30,7 +30,18 @@ export const routes = createBrowserRouter([
           element: <Suspense fallback={<p role="status">Cargando catálogos…</p>}><CatalogsPage /></Suspense>,
         },
         {
-          element: <RoleGuard role="ADMIN" />,
+          path: "registros/:id",
+          element: <Suspense fallback={<p role="status">Cargando registro…</p>}><LoadDetailPage /></Suspense>,
+        },
+        {
+          element: <RoleGuard roles={["ADMIN", "OPERATOR"]} />,
+          children: [{
+            path: "registros/nuevo",
+            element: <Suspense fallback={<p role="status">Cargando formulario…</p>}><NewLoadPage /></Suspense>,
+          }],
+        },
+        {
+          element: <RoleGuard roles={["ADMIN"]} />,
           children: [{
             path: "usuarios",
             element: <Suspense fallback={<p role="status">Cargando usuarios…</p>}><UsersPage /></Suspense>,
