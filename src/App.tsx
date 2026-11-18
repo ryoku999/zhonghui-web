@@ -3,9 +3,13 @@ import { queryClient } from "./config/query";
 import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RouterProvider } from "react-router-dom";
 import { routes } from "./presentation/routes/routes";
-import { useEffect } from "react";
+import { lazy, Suspense, useEffect } from "react";
 import { Toaster } from "sonner";
 import { restoreSession } from "./presentation/features/auth/auth.api";
+
+const OfflineSync = lazy(
+  () => import("./presentation/features/offline/OfflineSync"),
+);
 
 const App = () => {
   useEffect(() => {
@@ -15,6 +19,9 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={routes} />
+      <Suspense fallback={null}>
+        <OfflineSync />
+      </Suspense>
       <Toaster richColors />
       <ReactQueryDevtools />
     </QueryClientProvider>

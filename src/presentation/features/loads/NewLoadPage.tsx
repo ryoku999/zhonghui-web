@@ -2,14 +2,17 @@ import { useState } from "react";
 import { useForm, useWatch } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useQuery } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
+import { Link, useNavigate, useSearchParams } from "react-router-dom";
 import { Button } from "@/presentation/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/presentation/components/ui/card";
 import { Input } from "@/presentation/components/ui/input";
-import { list, pageSize, requestMessage, type Location } from "@/presentation/features/catalog/catalog.api";
+import { useAuthStore } from "@/presentation/features/auth/auth.store";
+import { getDraft, saveLocalLoad, type LocalLoad } from "@/presentation/features/offline/offline.db";
+import { refreshLocalLocations, syncLocalLoads } from "@/presentation/features/offline/offline.sync";
+import { useStoredLocations } from "@/presentation/features/offline/useLocalData";
 import HistorySuggestions from "./HistorySuggestions";
 import LoadSummary from "./LoadSummary";
-import { createLoad, loadSchema, type LoadInput } from "./loads.api";
+import { loadSchema, type LoadInput } from "./loads.api";
 
 const defaultValues: LoadInput = {
   locationId: "", ruc: "", legalName: "", documentType: "DNI", documentNumber: "",
@@ -18,9 +21,25 @@ const defaultValues: LoadInput = {
 };
 
 export default function NewLoadPage() {
-  const { register, control, setValue, handleSubmit, formState: { errors } } = useForm<LoadInput>({
-    resolver: zodResolver(loadSchema), defaultValues,
+  const [params] = useSearchParams();
+  const draftId = params.get("draft");
+  const ownerId = useAuthStore((state) => state.session?.user.id ?? "");
+  const previous = useQuery({
+    queryKey: ["local-draft", ownerId, draftId], enabled: !!draftId,
+    queryFn: async () => (await getDraft(draftId ?? "", ownerId)) ?? null, networkMode: "always", retry: false,
   });
+  if (draftId && previous.isPending) return <p role="status">Abriendo borrador…</p>;
+  if (draftId && (!previous.data?.input || previous.isError)) {
+    return <p role="alert">No se pudo abrir este borrador. <Link className="underline" to="/pendientes">Volver a pendientes</Link></p>;
+  }
+  return <LoadForm key={`${ownerId}:${draftId ?? "new"}`} ownerId={ownerId} previous={previous.data ?? undefined} />;
+}
+
+function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad }) {
+  const { register, control, setValue, getValues, handleSubmit, formState: { errors } } = useForm<LoadInput>({
+    resolver: zodResolver(loadSchema), defaultValues: previous?.input ?? defaultValues,
+  });
+  const [localId] = useState(() => previous?.id ?? crypto.randomUUID());
   const [locationId, ruc, documentType, documentNumber, firstNames, license, tractor, trailer] = useWatch({
     control,
     name: ["locationId", "ruc", "documentType", "documentNumber", "firstNames", "licenseNumber", "tractorPlate", "trailerPlate"],
@@ -28,21 +47,14 @@ export default function NewLoadPage() {
   const [selectedDriver, setSelectedDriver] = useState<{ id: string; type?: string | null; number?: string | null }>();
   const driverId = selectedDriver && selectedDriver.type === documentType.trim().toUpperCase() &&
     selectedDriver.number === documentNumber.trim().toUpperCase() ? selectedDriver.id : undefined;
-  const [draft, setDraft] = useState<{ input: LoadInput; key: string }>();
+  const [draft, setDraft] = useState<LoadInput>();
   const [pending, setPending] = useState(false);
   const [failure, setFailure] = useState("");
   const navigate = useNavigate();
-  const locations = useQuery({
-    queryKey: ["load-form-locations"],
-    queryFn: async () => {
-      const all: Location[] = [];
-      for (let page = 0; ; page += 1) {
-        const points = await list<Location>("/locations", page);
-        all.push(...points.filter((point) => point.isActive));
-        if (points.length < pageSize) return all;
-      }
-    },
-  });
+  const locations = useStoredLocations(ownerId);
+  const [updatingPoints, setUpdatingPoints] = useState(false);
+  const point = locations?.data?.find((item) => item.id === locationId);
+  const locationName = point?.name ?? (previous?.locationId === locationId ? previous.locationName : "");
   const readOnly = !locationId || !!draft;
 
   function setField(name: keyof LoadInput, value?: string | null) {
@@ -61,17 +73,31 @@ export default function NewLoadPage() {
     );
   }
 
-  async function confirm() {
-    if (!draft || pending) return;
+  async function persist(input: LoadInput, status: "DRAFT" | "PENDING_SYNC") {
+    if (pending || !locationName || (status === "PENDING_SYNC" && !point)) return;
     setPending(true);
     setFailure("");
     try {
-      const saved = await createLoad(draft.input, draft.key);
-      void navigate(`/registros/${saved.id}`, { state: { created: true } });
+      await saveLocalLoad(localId, ownerId, input, locationName, status);
+      void navigate("/pendientes");
+      if (status === "PENDING_SYNC") void syncLocalLoads(ownerId).catch(() => undefined);
     } catch (error) {
-      setFailure(requestMessage(error));
+      setFailure(error instanceof Error && error.message === "El registro local ya está en cola."
+        ? error.message : "No se pudo guardar en este dispositivo. Revisa el almacenamiento e inténtalo de nuevo.");
     } finally {
       setPending(false);
+    }
+  }
+
+  async function refreshPoints() {
+    setUpdatingPoints(true);
+    setFailure("");
+    try {
+      await refreshLocalLocations(ownerId, true);
+    } catch {
+      setFailure("No se pudieron actualizar los puntos. Los puntos ya guardados siguen disponibles.");
+    } finally {
+      setUpdatingPoints(false);
     }
   }
 
@@ -80,21 +106,27 @@ export default function NewLoadPage() {
       <h1 className="text-2xl font-semibold tracking-tight">Nuevo registro de transportista</h1>
       <form hidden={!!draft} className="space-y-4" onSubmit={handleSubmit((input) => {
         setFailure("");
-        setDraft({ input, key: crypto.randomUUID() });
+        if (point) setDraft(input);
       })}>
         <input type="hidden" {...register("licenseId")} />
         <Card>
           <CardContent className="space-y-2">
             <label className="grid gap-1.5 text-sm">Punto de embarque
               <select className="h-10 rounded-md border bg-background px-3" {...register("locationId")}
-                disabled={locations.isPending || locations.isError} aria-invalid={!!errors.locationId}>
+                aria-invalid={!!errors.locationId}>
                 <option value="">Selecciona un punto</option>
-                {locations.data?.map((point) => <option key={point.id} value={point.id}>{point.name}</option>)}
+                {previous && !locations?.data?.some((item) => item.id === previous.locationId) &&
+                  <option value={previous.locationId}>{previous.locationName} (por verificar)</option>}
+                {locations?.data?.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
               </select>
             </label>
             {errors.locationId && <p className="text-sm text-destructive">{errors.locationId.message}</p>}
-            {locations.isError && <p role="alert" className="text-sm text-destructive">{requestMessage(locations.error)}</p>}
-            {locations.data?.length === 0 && <p className="text-sm text-muted-foreground">No tienes puntos activos disponibles.</p>}
+            {!locations?.data?.length &&
+              <p className="text-sm text-muted-foreground">Conéctate para descargar tus puntos activos.</p>}
+            {locationId && !point && <p className="text-sm text-muted-foreground">Elige un punto disponible para poner este borrador en cola.</p>}
+            <Button type="button" size="sm" variant="outline" disabled={updatingPoints} onClick={() => void refreshPoints()}>
+              {updatingPoints ? "Actualizando…" : "Actualizar puntos"}
+            </Button>
           </CardContent>
         </Card>
         <fieldset disabled={readOnly} className="space-y-4">
@@ -161,17 +193,24 @@ export default function NewLoadPage() {
               </label>
             </CardContent>
           </Card>
-          <Button type="submit">Revisar registro</Button>
+          {failure && <p role="alert" className="text-sm text-destructive">{failure}</p>}
+          <div className="flex flex-wrap gap-2">
+            <Button type="button" variant="outline" disabled={pending || !locationName}
+              onClick={() => void persist(getValues(), "DRAFT")}>Guardar borrador</Button>
+            <Button type="submit" disabled={pending || !point}>Revisar registro</Button>
+          </div>
         </fieldset>
       </form>
       {draft && <Card>
         <CardHeader><h2 className="font-semibold">Confirma los datos del registro</h2></CardHeader>
         <CardContent className="space-y-5">
-          <LoadSummary input={draft.input} locationName={locations.data?.find((p) => p.id === draft.input.locationId)?.name ?? "—"} />
+          <LoadSummary input={draft} locationName={locationName} />
           {failure && <p role="alert" className="text-destructive">{failure}</p>}
           <div className="flex flex-wrap gap-2">
             <Button variant="outline" disabled={pending} onClick={() => setDraft(undefined)}>Volver a editar</Button>
-            <Button disabled={pending} onClick={() => void confirm()}>{pending ? "Guardando…" : "Confirmar y guardar"}</Button>
+            <Button disabled={pending || !point} onClick={() => void persist(draft, "PENDING_SYNC")}>
+              {pending ? "Guardando…" : "Confirmar y guardar"}
+            </Button>
           </div>
         </CardContent>
       </Card>}

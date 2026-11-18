@@ -1,9 +1,10 @@
 import { useState } from "react";
 import { Link, NavLink, Outlet } from "react-router-dom";
-import { BookOpen, ClipboardList, FilePlus, LayoutDashboard, MapPin, ShieldCheck, Users } from "lucide-react";
+import { BookOpen, ClipboardList, FilePlus, Inbox, LayoutDashboard, MapPin, ShieldCheck, Users } from "lucide-react";
 import { Button } from "@/presentation/components/ui/button";
 import { logout } from "@/presentation/features/auth/auth.api";
 import { useAuthStore } from "@/presentation/features/auth/auth.store";
+import { useLocalLoads } from "@/presentation/features/offline/useLocalData";
 
 export default function SessionLayout() {
   const user = useAuthStore((state) => state.session?.user);
@@ -13,7 +14,10 @@ export default function SessionLayout() {
     { to: "/", label: "Resumen", icon: LayoutDashboard },
     { to: "/registros", label: "Registros", icon: ClipboardList },
     ...((user?.role === "ADMIN" || user?.role === "OPERATOR")
-      ? [{ to: "/registros/nuevo", label: "Nuevo registro", icon: FilePlus }]
+      ? [
+        { to: "/registros/nuevo", label: "Nuevo registro", icon: FilePlus },
+        { to: "/pendientes", label: "Pendientes", icon: Inbox },
+      ]
       : []),
     { to: "/puntos-de-embarque", label: "Puntos de embarque", icon: MapPin },
     { to: "/catalogos", label: "Catálogos", icon: BookOpen },
@@ -57,6 +61,7 @@ export default function SessionLayout() {
                 ? "bg-primary font-medium text-primary-foreground"
                 : "text-muted-foreground hover:bg-muted hover:text-foreground"}`}>
               <Icon aria-hidden="true" className="size-4 shrink-0" />{label}
+              {to === "/pendientes" && user && <PendingCount ownerId={user.id} />}
             </NavLink>)}
           </nav>
         </aside>
@@ -67,4 +72,9 @@ export default function SessionLayout() {
       </div>
     </div>
   );
+}
+
+function PendingCount({ ownerId }: { ownerId: string }) {
+  const count = useLocalLoads(ownerId)?.data?.filter((entry) => entry.status !== "SYNCED" && entry.status !== "DRAFT").length ?? 0;
+  return count > 0 ? <span className="rounded-full bg-muted px-1.5 text-xs text-foreground" aria-label={`${count} envíos pendientes`}>{count}</span> : null;
 }

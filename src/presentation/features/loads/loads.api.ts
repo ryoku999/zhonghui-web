@@ -38,8 +38,10 @@ export type Load = {
   snapshot: LoadInput & { locationName: string; trailerType: string };
 };
 
-export async function createLoad(input: LoadInput, key: string) {
-  return (await api.post<Load>("/loads", input, { headers: { "Idempotency-Key": key } })).data;
+export async function createLoad(input: LoadInput, key: string, ownerId: string) {
+  return (await api.post<Load>("/loads", input, {
+    expectedUserId: ownerId, headers: { "Idempotency-Key": key },
+  })).data;
 }
 
 export async function getLoad(id: string) {

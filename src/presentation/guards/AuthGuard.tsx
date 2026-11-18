@@ -8,7 +8,7 @@ export default function AuthGuard() {
   if (status === "loading") return <p className="p-6" role="status">Cargando sesión…</p>;
   if (status === "unavailable") return (
     <main className="space-y-3 p-6">
-      <p role="alert">No se pudo comprobar tu sesión.</p>
+      <p role="alert">Conéctate para verificar tu sesión y volver a abrir tus registros locales.</p>
       <Button onClick={() => void restoreSession()}>Reintentar</Button>
     </main>
   );

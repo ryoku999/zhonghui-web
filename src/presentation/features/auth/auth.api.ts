@@ -75,6 +75,9 @@ api.interceptors.request.use((config) => {
   }
   request.sessionVersion ??= sessionVersion;
   const session = useAuthStore.getState().session;
+  if (config.expectedUserId !== undefined && session?.user.id !== config.expectedUserId) {
+    throw new axios.CanceledError("La sesión cambió.");
+  }
   if (session) config.headers.set("Authorization", `Bearer ${session.accessToken}`);
   return config;
 });
