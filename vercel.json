@@ -1,12 +1,9 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "rewrites": [
-    { "source": "/login", "destination": "/index.html" },
-    { "source": "/registros/:path*", "destination": "/index.html" },
-    { "source": "/pendientes", "destination": "/index.html" },
-    { "source": "/puntos-de-embarque", "destination": "/index.html" },
-    { "source": "/catalogos", "destination": "/index.html" },
-    { "source": "/usuarios", "destination": "/index.html" },
-    { "source": "/auditoria", "destination": "/index.html" }
+    {
+      "source": "/:path((?!api(?:/|$)|assets(?:/|$)|.*\\.[^/]+$).*)",
+      "destination": "/index.html"
+    }
   ]
 }
