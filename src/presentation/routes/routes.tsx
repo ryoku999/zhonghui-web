@@ -4,7 +4,7 @@ import AuthGuard from "@/presentation/guards/AuthGuard";
 import GuestGuard from "@/presentation/guards/GuestGuard";
 import RoleGuard from "@/presentation/guards/RoleGuard";
 import SessionLayout from "@/presentation/layouts/SessionLayout";
-import { CatalogsPage, LoadDetailPage, LocationsPage, LoginPage, NewLoadPage, UsersPage } from "./lazy-pages";
+import { AuditPage, CatalogsPage, DashboardPage, LoadDetailPage, LoadsPage, LocationsPage, LoginPage, NewLoadPage, UsersPage } from "./lazy-pages";
 
 export const routes = createBrowserRouter([
   {
@@ -20,7 +20,11 @@ export const routes = createBrowserRouter([
       path: "/",
       element: <SessionLayout />,
       children: [
-        { index: true, element: <h1 className="text-xl font-semibold">Inicio</h1> },
+        { index: true, element: <Suspense fallback={<p role="status">Cargando resumen…</p>}><DashboardPage /></Suspense> },
+        {
+          path: "registros",
+          element: <Suspense fallback={<p role="status">Cargando registros…</p>}><LoadsPage /></Suspense>,
+        },
         {
           path: "puntos-de-embarque",
           element: <Suspense fallback={<p role="status">Cargando puntos…</p>}><LocationsPage /></Suspense>,
@@ -42,10 +46,16 @@ export const routes = createBrowserRouter([
         },
         {
           element: <RoleGuard roles={["ADMIN"]} />,
-          children: [{
-            path: "usuarios",
-            element: <Suspense fallback={<p role="status">Cargando usuarios…</p>}><UsersPage /></Suspense>,
-          }],
+          children: [
+            {
+              path: "usuarios",
+              element: <Suspense fallback={<p role="status">Cargando usuarios…</p>}><UsersPage /></Suspense>,
+            },
+            {
+              path: "auditoria",
+              element: <Suspense fallback={<p role="status">Cargando auditoría…</p>}><AuditPage /></Suspense>,
+            },
+          ],
         },
       ],
     }],

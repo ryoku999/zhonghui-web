@@ -4,6 +4,7 @@ import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
 import { RouterProvider } from "react-router-dom";
 import { routes } from "./presentation/routes/routes";
 import { useEffect } from "react";
+import { Toaster } from "sonner";
 import { restoreSession } from "./presentation/features/auth/auth.api";
 
 const App = () => {
@@ -14,6 +15,7 @@ const App = () => {
   return (
     <QueryClientProvider client={queryClient}>
       <RouterProvider router={routes} />
+      <Toaster richColors />
       <ReactQueryDevtools />
     </QueryClientProvider>
   );
