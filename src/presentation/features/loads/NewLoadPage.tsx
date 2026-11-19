@@ -68,12 +68,23 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
     setValue("externalFields", [...new Set([...(getValues("externalFields") ?? []), name])]);
   }
 
+  function clearLookupSelection(name: keyof LoadInput) {
+    if (name === "licenseNumber" || name === "documentNumber" || name === "documentType") {
+      setField("licenseId", "");
+      setField("licenseVerification", "");
+    }
+    if (name === "tractorPlate" || name === "trailerPlate") {
+      setField(name === "tractorPlate" ? "tractorVerification" : "trailerVerification", "");
+      setValue("externalFields", (getValues("externalFields") ?? []).filter((field) => field !== name));
+    }
+  }
+
   function field(name: keyof LoadInput, label: string, options?: { inputMode?: "numeric" | "tel"; maxLength?: number }) {
     return (
       <label className="grid min-w-0 gap-1.5 text-sm">
         {label}
         <Input {...options} {...register(name, {
-          onChange: name === "licenseNumber" ? () => setField("licenseId", "") : undefined,
+          onChange: () => clearLookupSelection(name),
         })} aria-invalid={!!errors[name]} />
         {errors[name] && <span className="text-destructive">{errors[name]?.message}</span>}
       </label>
@@ -173,11 +184,16 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
                   setField("phone", row.phone);
                   setField("licenseNumber", "");
                   setField("licenseId", "");
+                  setField("licenseVerification", "");
                 }} />
               {driverId && <HistorySuggestions key={driverId} catalog="licenses" filters={{ driverId }} term={license}
                 label="Buscar licencias del conductor"
                 describe={(row) => [row.licenseNumber, row.issuingCountry, row.expiresOn].filter(Boolean).join(" · ")}
-                select={(row) => { setField("licenseNumber", row.licenseNumber); setField("licenseId", row.id); }} />}
+                select={(row) => {
+                  setField("licenseNumber", row.licenseNumber);
+                  setField("licenseId", row.id);
+                  setField("licenseVerification", "");
+                }} />}
               {documentType.trim().toUpperCase() === "DNI" && <LookupPanel key={documentNumber} kind="mtc" value={documentNumber}
                 onApply={(result) => {
                   applyExternalField("firstNames", result.firstNames);
@@ -185,6 +201,7 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
                   if (result.licenseNumber) {
                     applyExternalField("licenseNumber", result.licenseNumber);
                     setField("licenseId", "");
+                    setField("licenseVerification", result.licenseVerification ?? "");
                   }
                 }} />}
             </CardContent>
@@ -196,17 +213,29 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
                 <div className="space-y-2">
                   {field("tractorPlate", "Placa de tracto")}
                   <HistorySuggestions catalog="vehicles" filters={{ type: "TRACTOR" }} term={tractor}
-                    label="Buscar tracto" describe={(row) => row.plate ?? ""} select={(row) => setField("tractorPlate", row.plate)} />
+                    label="Buscar tracto" describe={(row) => row.plate ?? ""} select={(row) => {
+                      clearLookupSelection("tractorPlate");
+                      setField("tractorPlate", row.plate);
+                    }} />
                   <LookupPanel key={tractor} kind="sunarp" value={tractor}
-                    onApply={(result) => applyExternalField("tractorPlate", result.plate)} />
+                    onApply={(result) => {
+                      applyExternalField("tractorPlate", result.plate);
+                      setField("tractorVerification", result.vehicleVerification);
+                    }} />
                 </div>
                 <div className="space-y-2">
-                  {field("trailerPlate", "Placa de carreta")}
+                  {field("trailerPlate", "Placa de carreta (opcional)")}
                   <HistorySuggestions catalog="vehicles" term={trailer}
                     label="Buscar carreta" describe={(row) => `${row.plate} · ${row.vehicleType}`}
-                    filters={{ type: "TRAILER,SEMITRAILER" }} select={(row) => setField("trailerPlate", row.plate)} />
+                    filters={{ type: "TRAILER,SEMITRAILER" }} select={(row) => {
+                      clearLookupSelection("trailerPlate");
+                      setField("trailerPlate", row.plate);
+                    }} />
                   <LookupPanel key={trailer} kind="sunarp" value={trailer}
-                    onApply={(result) => applyExternalField("trailerPlate", result.plate)} />
+                    onApply={(result) => {
+                      applyExternalField("trailerPlate", result.plate);
+                      setField("trailerVerification", result.vehicleVerification);
+                    }} />
                 </div>
               </div>
               {field("unitDescription", "Unidad (opcional)")}

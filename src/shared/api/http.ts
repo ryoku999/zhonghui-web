@@ -13,4 +13,5 @@ export const cookieClient = axios.create({
   withCredentials: true,
   timeout: 10_000,
 });
+
 export const api = axios.create({ baseURL, timeout: 10_000 });
