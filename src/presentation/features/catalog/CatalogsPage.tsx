@@ -8,6 +8,7 @@ import { list, pageSize, requestMessage, type CatalogName, type CatalogRow } fro
 import Pagination from "./Pagination";
 import LookupPanel from "./LookupPanel";
 import LicenseDetails, { type LicenseData } from "./LicenseDetails";
+import VehicleDetails, { type VehicleData } from "./VehicleDetails";
 import { formatDatePE } from "@/shared/lib/dates";
 import { api } from "@/shared/api/http";
 
@@ -122,12 +123,7 @@ function CatalogResults({ name, driver, clearDriver, showLicenses }: {
             {hasDetails && expanded === row.id && <TableRow>
               <TableCell colSpan={config.columns.length + 1} className="whitespace-normal">
                 <div className="space-y-3 p-2">
-                  {name === "licenses" ? <CatalogLicenseDetails id={row.id} /> :
-                    <dl className="grid gap-3 sm:grid-cols-3">{[
-                      ["Año de modelo", row.modelYear], ["Color", row.color], ["Estado registral", row.registrationStatus],
-                    ].map(([label, value]) => <div key={label}>
-                      <dt className="text-muted-foreground">{label}</dt><dd>{value || "—"}</dd>
-                    </div>)}</dl>}
+                  {name === "licenses" ? <CatalogLicenseDetails id={row.id} /> : <CatalogVehicleDetails id={row.id} />}
                   {name === "vehicles" && <LookupPanel kind="sunarp" value={row.plate ?? ""} />}
                   {name === "licenses" && row.driverDocumentType === "DNI" &&
                     <LookupPanel kind="mtc" value={row.driverDocument ?? ""} />}
@@ -150,4 +146,14 @@ function CatalogLicenseDetails({ id }: { id: string }) {
   if (detail.isPending) return <p role="status">Cargando datos de la licencia…</p>;
   if (detail.isError) return <p role="alert" className="text-destructive">{requestMessage(detail.error)}</p>;
   return <LicenseDetails data={detail.data} />;
+}
+
+function CatalogVehicleDetails({ id }: { id: string }) {
+  const detail = useQuery({
+    queryKey: ["catalog", "vehicle-detail", id],
+    queryFn: async () => (await api.get<VehicleData>(`/vehicles/${id}`)).data,
+  });
+  if (detail.isPending) return <p role="status">Cargando datos del vehículo…</p>;
+  if (detail.isError) return <p role="alert" className="text-destructive">{requestMessage(detail.error)}</p>;
+  return <VehicleDetails data={detail.data} />;
 }

@@ -3,14 +3,15 @@ import { Button } from "@/presentation/components/ui/button";
 import { useAuthStore } from "@/presentation/features/auth/auth.store";
 import { api } from "@/shared/api/http";
 import LicenseDetails, { type LicenseData } from "./LicenseDetails";
+import VehicleDetails, { type VehicleData } from "./VehicleDetails";
 import { requestMessage } from "./catalog.api";
 
 type Company = { ruc: string; legalName: string; taxStatus?: string; taxCondition?: string; fiscalAddress?: string };
 type License = LicenseData & { verification?: string };
 type Driver = { dni: string; firstNames: string; lastNames: string; licenses: License[]; incomplete: boolean; checkedAt?: string };
-type Vehicle = { plate: string; make?: string; model?: string; modelYear?: number; color?: string; registrationStatus?: string };
+type Vehicle = VehicleData & { verification?: string };
 type LookupResult = { found: boolean; data: Company | Driver | Vehicle | null };
-type Suggestion = { ruc?: string; legalName?: string; dni?: string; firstNames?: string; lastNames?: string; licenseNumber?: string; licenseVerification?: string; plate?: string };
+type Suggestion = { ruc?: string; legalName?: string; dni?: string; firstNames?: string; lastNames?: string; licenseNumber?: string; licenseVerification?: string; plate?: string; vehicleVerification?: string };
 
 export default function LookupPanel({ kind, value, onApply }: {
   kind: "sunat" | "mtc" | "sunarp";
@@ -56,9 +57,10 @@ export default function LookupPanel({ kind, value, onApply }: {
         </div>)}
       </div>}
       {data && "plate" in data && <div className="space-y-2 rounded-md border p-3 text-sm">
-        <p className="font-medium">{[data.plate, data.make, data.model].filter(Boolean).join(" · ")}</p>
-        <p>{[data.modelYear, data.color, data.registrationStatus].filter(Boolean).join(" · ")}</p>
-        {onApply && <Button type="button" size="sm" onClick={() => onApply(data)}>Usar placa vigente</Button>}
+        <VehicleDetails data={data} />
+        {onApply && <Button type="button" size="sm" onClick={() => onApply({ plate: data.plate, vehicleVerification: data.verification })}>
+          Usar datos de SUNARP
+        </Button>}
       </div>}
     </div>
   );

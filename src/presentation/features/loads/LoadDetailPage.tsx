@@ -8,6 +8,7 @@ import { Input } from "@/presentation/components/ui/input";
 import { useAuthStore } from "@/presentation/features/auth/auth.store";
 import { requestMessage } from "@/presentation/features/catalog/catalog.api";
 import LicenseDetails from "@/presentation/features/catalog/LicenseDetails";
+import VehicleDetails from "@/presentation/features/catalog/VehicleDetails";
 import { formatDatePE, formatDateTimePE } from "@/shared/lib/dates";
 import LoadSummary from "./LoadSummary";
 import { getLoad, updateLoad } from "./loads.api";
@@ -63,6 +64,13 @@ export default function LoadDetailPage() {
             <summary className="cursor-pointer text-sm font-medium">Ver más datos de la licencia</summary>
             <div className="mt-3"><LicenseDetails data={record.snapshot.licenseDetails} /></div>
           </details>}
+          {([
+            ["del tracto", record.snapshot.tractorDetails],
+            ["de la carreta", record.snapshot.trailerDetails],
+          ] as const).map(([label, data]) => data && <details key={label} className="rounded-md border p-3">
+            <summary className="cursor-pointer text-sm font-medium">Ver más datos {label}</summary>
+            <div className="mt-3"><VehicleDetails data={data} /></div>
+          </details>)}
           <p className="text-sm text-muted-foreground">Registrado el {formatDateTimePE(record.createdAt)} (hora de Lima)</p>
         </CardContent>
       </Card>

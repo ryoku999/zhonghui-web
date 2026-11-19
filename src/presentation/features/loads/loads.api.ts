@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { api } from "@/shared/api/http";
 import type { LicenseData } from "@/presentation/features/catalog/LicenseDetails";
+import type { VehicleData } from "@/presentation/features/catalog/VehicleDetails";
 
 const plate = z
   .string()
@@ -34,6 +35,8 @@ export const loadSchema = z
     licenseVerification: z.string().max(12000).optional(),
     phone: z.string().trim().max(40),
     tractorPlate: plate,
+    tractorVerification: z.string().max(32_000).optional(),
+    trailerVerification: z.string().max(32_000).optional(),
     trailerPlate: z
       .string()
       .trim()
@@ -85,7 +88,13 @@ export type Load = {
   createdBy: string;
   status: "REGISTERED" | "CANCELLED";
   version: number;
-  snapshot: LoadInput & { locationName: string; trailerType: string; licenseDetails?: LicenseData };
+  snapshot: LoadInput & {
+    locationName: string;
+    trailerType?: string;
+    licenseDetails?: LicenseData;
+    tractorDetails?: VehicleData;
+    trailerDetails?: VehicleData;
+  };
 };
 
 export async function createLoad(
