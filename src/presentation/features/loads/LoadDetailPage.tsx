@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader } from "@/presentation/components/ui/card
 import { Input } from "@/presentation/components/ui/input";
 import { useAuthStore } from "@/presentation/features/auth/auth.store";
 import { requestMessage } from "@/presentation/features/catalog/catalog.api";
+import LicenseDetails from "@/presentation/features/catalog/LicenseDetails";
 import { formatDatePE, formatDateTimePE } from "@/shared/lib/dates";
 import LoadSummary from "./LoadSummary";
 import { getLoad, updateLoad } from "./loads.api";
@@ -58,6 +59,10 @@ export default function LoadDetailPage() {
         <CardHeader><h2 className="font-semibold">Datos del registro</h2></CardHeader>
         <CardContent className="space-y-4">
           <LoadSummary input={record.snapshot} locationName={record.snapshot.locationName} />
+          {record.snapshot.licenseDetails && <details className="rounded-md border p-3">
+            <summary className="cursor-pointer text-sm font-medium">Ver más datos de la licencia</summary>
+            <div className="mt-3"><LicenseDetails data={record.snapshot.licenseDetails} /></div>
+          </details>}
           <p className="text-sm text-muted-foreground">Registrado el {formatDateTimePE(record.createdAt)} (hora de Lima)</p>
         </CardContent>
       </Card>

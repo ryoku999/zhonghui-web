@@ -1,5 +1,6 @@
 import { z } from "zod";
 import { api } from "@/shared/api/http";
+import type { LicenseData } from "@/presentation/features/catalog/LicenseDetails";
 
 const plate = z
   .string()
@@ -30,6 +31,7 @@ export const loadSchema = z
     lastNames: z.string().trim().min(1, "Ingresa los apellidos.").max(120),
     licenseNumber: z.string().trim().toUpperCase().max(60),
     licenseId: z.union([z.uuid(), z.literal("")]).optional(),
+    licenseVerification: z.string().max(12000).optional(),
     phone: z.string().trim().max(40),
     tractorPlate: plate,
     trailerPlate: z
@@ -83,7 +85,7 @@ export type Load = {
   createdBy: string;
   status: "REGISTERED" | "CANCELLED";
   version: number;
-  snapshot: LoadInput & { locationName: string; trailerType: string };
+  snapshot: LoadInput & { locationName: string; trailerType: string; licenseDetails?: LicenseData };
 };
 
 export async function createLoad(

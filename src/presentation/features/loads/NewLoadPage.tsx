@@ -73,7 +73,10 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
       <label className="grid min-w-0 gap-1.5 text-sm">
         {label}
         <Input {...options} {...register(name, {
-          onChange: name === "licenseNumber" ? () => setField("licenseId", "") : undefined,
+          onChange: name === "licenseNumber" || name === "documentNumber" || name === "documentType" ? () => {
+            setField("licenseId", "");
+            setField("licenseVerification", "");
+          } : undefined,
         })} aria-invalid={!!errors[name]} />
         {errors[name] && <span className="text-destructive">{errors[name]?.message}</span>}
       </label>
@@ -173,11 +176,16 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
                   setField("phone", row.phone);
                   setField("licenseNumber", "");
                   setField("licenseId", "");
+                  setField("licenseVerification", "");
                 }} />
               {driverId && <HistorySuggestions key={driverId} catalog="licenses" filters={{ driverId }} term={license}
                 label="Buscar licencias del conductor"
                 describe={(row) => [row.licenseNumber, row.issuingCountry, row.expiresOn].filter(Boolean).join(" · ")}
-                select={(row) => { setField("licenseNumber", row.licenseNumber); setField("licenseId", row.id); }} />}
+                select={(row) => {
+                  setField("licenseNumber", row.licenseNumber);
+                  setField("licenseId", row.id);
+                  setField("licenseVerification", "");
+                }} />}
               {documentType.trim().toUpperCase() === "DNI" && <LookupPanel key={documentNumber} kind="mtc" value={documentNumber}
                 onApply={(result) => {
                   applyExternalField("firstNames", result.firstNames);
@@ -185,6 +193,7 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
                   if (result.licenseNumber) {
                     applyExternalField("licenseNumber", result.licenseNumber);
                     setField("licenseId", "");
+                    setField("licenseVerification", result.licenseVerification ?? "");
                   }
                 }} />}
             </CardContent>

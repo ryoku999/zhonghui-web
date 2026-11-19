@@ -7,7 +7,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { list, pageSize, requestMessage, type CatalogName, type CatalogRow } from "./catalog.api";
 import Pagination from "./Pagination";
 import LookupPanel from "./LookupPanel";
+import LicenseDetails, { type LicenseData } from "./LicenseDetails";
 import { formatDatePE } from "@/shared/lib/dates";
+import { api } from "@/shared/api/http";
 
 const catalogs = {
   companies: { label: "Empresas", hint: "RUC o razón social", columns: [
@@ -18,8 +20,8 @@ const catalogs = {
     ["lastNames", "Apellidos"], ["phone", "Teléfono"],
   ] },
   licenses: { label: "Licencias", hint: "Número de licencia", columns: [
-    ["licenseNumber", "Licencia"], ["licenseClass", "Clase"], ["category", "Categoría"],
-    ["expiresOn", "Vencimiento"], ["issuingCountry", "País emisor"],
+    ["licenseNumber", "Licencia"], ["category", "Categoría"], ["licenseStatus", "Estado oficial"],
+    ["revalidationOn", "Revalidación informada"],
   ] },
   vehicles: { label: "Vehículos", hint: "Placa", columns: [
     ["plate", "Placa"], ["vehicleType", "Tipo"], ["make", "Marca"], ["model", "Modelo"],
@@ -104,7 +106,9 @@ function CatalogResults({ name, driver, clearDriver, showLicenses }: {
             {hasDetails && <TableHead>Detalle</TableHead>}
           </TableRow></TableHeader>
           <TableBody>{results.data.map((row) => <Fragment key={row.id}><TableRow>
-            {config.columns.map(([field]) => <TableCell key={field}>{row[field] || "—"}</TableCell>)}
+            {config.columns.map(([field]) => <TableCell key={field}>
+              {field === "revalidationOn" && row[field] ? formatDatePE(row[field]) : row[field] || "—"}
+            </TableCell>)}
             {name === "drivers" && <TableCell>
               <Button size="sm" variant="outline" onClick={() => showLicenses(row)}>Ver licencias</Button>
             </TableCell>}
@@ -118,15 +122,12 @@ function CatalogResults({ name, driver, clearDriver, showLicenses }: {
             {hasDetails && expanded === row.id && <TableRow>
               <TableCell colSpan={config.columns.length + 1} className="whitespace-normal">
                 <div className="space-y-3 p-2">
-                  <dl className="grid gap-3 sm:grid-cols-3">
-                    {(name === "licenses" ? [
-                      ["Estado oficial", row.licenseStatus], ["Fecha de expedición", row.issuedOn ? formatDatePE(row.issuedOn) : ""],
-                    ] : [
+                  {name === "licenses" ? <CatalogLicenseDetails id={row.id} /> :
+                    <dl className="grid gap-3 sm:grid-cols-3">{[
                       ["Año de modelo", row.modelYear], ["Color", row.color], ["Estado registral", row.registrationStatus],
-                    ]).map(([label, value]) => <div key={label}>
+                    ].map(([label, value]) => <div key={label}>
                       <dt className="text-muted-foreground">{label}</dt><dd>{value || "—"}</dd>
-                    </div>)}
-                  </dl>
+                    </div>)}</dl>}
                   {name === "vehicles" && <LookupPanel kind="sunarp" value={row.plate ?? ""} />}
                   {name === "licenses" && row.driverDocumentType === "DNI" &&
                     <LookupPanel kind="mtc" value={row.driverDocument ?? ""} />}
@@ -139,4 +140,14 @@ function CatalogResults({ name, driver, clearDriver, showLicenses }: {
       </CardContent>
     </Card>
   );
+}
+
+function CatalogLicenseDetails({ id }: { id: string }) {
+  const detail = useQuery({
+    queryKey: ["catalog", "license-detail", id],
+    queryFn: async () => (await api.get<LicenseData>(`/licenses/${id}`)).data,
+  });
+  if (detail.isPending) return <p role="status">Cargando datos de la licencia…</p>;
+  if (detail.isError) return <p role="alert" className="text-destructive">{requestMessage(detail.error)}</p>;
+  return <LicenseDetails data={detail.data} />;
 }
