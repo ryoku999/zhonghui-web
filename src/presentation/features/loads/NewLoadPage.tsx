@@ -201,7 +201,7 @@ function LoadForm({ ownerId, previous }: { ownerId: string; previous?: LocalLoad
                     onApply={(result) => applyExternalField("tractorPlate", result.plate)} />
                 </div>
                 <div className="space-y-2">
-                  {field("trailerPlate", "Placa de carreta")}
+                  {field("trailerPlate", "Placa de carreta (opcional)")}
                   <HistorySuggestions catalog="vehicles" term={trailer}
                     label="Buscar carreta" describe={(row) => `${row.plate} · ${row.vehicleType}`}
                     filters={{ type: "TRAILER,SEMITRAILER" }} select={(row) => setField("trailerPlate", row.plate)} />
